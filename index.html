@@ -186,4 +186,210 @@
         
     </script>
 </body>
+</html><!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile-Ready Stream and Slideshow Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* CSS styles for the tears */
+        body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333; 
+            /* This is critical for mobile: it prevents the browser from doing things 
+               like zooming when you touch and move the screen. */
+            touch-action: none; 
+        }
+        .tear {
+            position: absolute;
+            pointer-events: none;
+            height: auto; 
+            width: auto;
+            line-height: 1;
+            transition: opacity 0.8s ease-out, top 0.8s ease-out; 
+            z-index: 1000; 
+        }
+        .tear img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            transform: scale(1); 
+            transition: transform 0.8s ease-out; 
+        }
+        
+        /* Styles for the Slideshow Image */
+        #slideshow-display {
+            position: relative; 
+            max-width: 90%;
+            max-height: 90vh;
+            border: 5px solid white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            z-index: 1; 
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    
+    <img id="slideshow-display" src="" alt="Slideshow Image">
+
+    <script>
+        // --- STREAM VARIABLES ---
+        let mouseX = 0;
+        let mouseY = 0;
+        let tearInterval = null;
+        let startTime = 0; 
+        let duration = 0; 
+        const tearImages = ['tear1.png', 'tear2.png', 'tear3.png'];
+
+        // --- SLIDESHOW VARIABLES ---
+        const slideshowImages = [
+            'slide1.jpg', 
+            'slide2.jpg', 
+            'slide3.jpg', 
+            'slide4.jpg', 
+            'slide5.jpg'
+        ];
+        let currentSlideIndex = 0;
+        let slideshowInterval = null;
+        const slideDuration = 3000;
+        const slideshowElement = document.getElementById('slideshow-display');
+
+        // 1. Core Logic Functions
+        function getDurationBasedHue() {
+            if (startTime === 0) return 0;
+            duration = (Date.now() - startTime) / 1000; 
+            const hueShiftSpeed = 30;
+            const hue = (duration * hueShiftSpeed) % 360; 
+            return hue;
+        }
+
+        function dropTear() {
+            // ... (Crying Stream Logic remains the same) ...
+            const currentHue = getDurationBasedHue();
+            const randomIndex = Math.floor(Math.random() * tearImages.length);
+            const selectedImage = tearImages[randomIndex];
+            
+            const randomSize = Math.floor(Math.random() * (180 - 120 + 1)) + 120;
+            const randomXOffset = Math.random() * 10 - 5; 
+            
+            const tearContainer = document.createElement('div');
+            tearContainer.className = 'tear';
+            const tearImage = document.createElement('img');
+            tearImage.src = selectedImage; 
+            tearImage.alt = 'Tear';
+            tearImage.style.filter = `hue-rotate(${currentHue}deg)`; 
+            tearContainer.appendChild(tearImage);
+
+            const initialX = mouseX + randomXOffset; 
+            const initialY = mouseY + 15; 
+
+            tearContainer.style.left = `${initialX}px`;
+            tearContainer.style.top = `${initialY}px`;
+            tearContainer.style.width = `${randomSize}px`; 
+            
+            document.body.appendChild(tearContainer);
+
+            // Animate (Fall, Fade, Shrink)
+            setTimeout(() => {
+                tearContainer.style.opacity = '0';
+                tearContainer.style.top = `${initialY + 70}px`;
+                tearImage.style.transform = 'scale(0.1)'; 
+            }, 10); 
+
+            // Remove Element
+            setTimeout(() => {
+                tearContainer.remove();
+            }, 800);
+        }
+        
+        // 2. Slideshow Logic (Now triggered by touching 'S' key on desktop or by typing it on mobile)
+        function changeSlide() {
+            slideshowElement.src = slideshowImages[currentSlideIndex];
+            slideshowElement.style.opacity = '1';
+            currentSlideIndex = (currentSlideIndex + 1) % slideshowImages.length;
+        }
+        
+        function startSlideshow() {
+            changeSlide();
+            slideshowInterval = setInterval(changeSlide, slideDuration);
+        }
+
+        function stopSlideshow() {
+            if (slideshowInterval !== null) {
+                clearInterval(slideshowInterval);
+                slideshowInterval = null;
+                slideshowElement.style.opacity = '0';
+            }
+        }
+
+        // 3. EVENT HANDLERS FOR MOUSE (for desktop users)
+        document.addEventListener('mousemove', function(event) {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+        
+        // 4. EVENT HANDLERS FOR TOUCH (for mobile users)
+        
+        function startCrying(event) {
+            event.preventDefault(); // Prevents default browser actions
+            
+            // Get the position of the first finger touch
+            mouseX = event.touches[0].clientX;
+            mouseY = event.touches[0].clientY;
+
+            if (tearInterval === null) {
+                startTime = Date.now(); 
+                tearInterval = setInterval(dropTear, 10); 
+                dropTear(); 
+            }
+        }
+
+        function moveCrying(event) {
+             event.preventDefault(); // Prevents default browser actions
+             // Update position as finger moves
+             if (tearInterval !== null) {
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+             }
+        }
+
+        function stopCrying() {
+            if (tearInterval !== null) {
+                clearInterval(tearInterval);
+                tearInterval = null;
+                startTime = 0; 
+                duration = 0;
+            }
+        }
+        
+        // 5. ATTACHING THE EVENTS
+        document.addEventListener('mousedown', startCrying); // Desktop click down
+        document.addEventListener('mouseup', stopCrying);   // Desktop click up
+        document.addEventListener('mousemove', moveCrying); // Desktop mouse move
+
+        document.addEventListener('touchstart', startCrying); // Mobile touch start
+        document.addEventListener('touchend', stopCrying);     // Mobile touch end
+        document.addEventListener('touchmove', moveCrying);  // Mobile finger move
+        
+        
+        // 6. KEYDOWN FOR SLIDESHOW (Still functional for desktop or mobile typing)
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 's') {
+                if (slideshowInterval === null) {
+                    startSlideshow();
+                } else {
+                    stopSlideshow();
+                }
+            }
+        });
+        
+    </script>
+</body>
 </html>
