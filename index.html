@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dynamic, Multi-Set Crying Mouse Demo</title>
+    <title>Dynamic, Multi-Set Crying Mouse Demo (Final)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         /* CSS styles for the tears */
@@ -19,23 +19,19 @@
             -webkit-user-select: none;
             -moz-user-select: none;
         }
-        .tear {
+        
+        /* NEW COMBINED TEAR IMAGE CLASS: Removed the outer .tear div for performance */
+        .tear-img { 
             position: absolute;
             pointer-events: none;
             height: auto; 
             width: auto;
             line-height: 1;
-            /* LONGER TRANSITION: 5.0 seconds for dramatic lingering and varied speed */
-            transition: opacity 2.0s ease-out, top 2.0s ease-out, left 2.0s ease-out; 
-            z-index: 1000; /* Tears are always on top */
-        }
-        .tear img {
             display: block;
-            width: 100%;
-            height: 100%;
             transform: scale(1); 
-            /* LONGER TRANSITION: 5.0 seconds for smooth shrinking */
-            transition: transform 5.0s ease-out; 
+            z-index: 1000; /* Tears are always on top */
+            /* LONGER TRANSITION: 5.0 seconds for dramatic lingering and varied speed */
+            transition: opacity 5.0s ease-out, top 5.0s ease-out, left 5.0s ease-out, transform 5.0s ease-out; 
         }
         
         /* Styles for the Slideshow Image (Collage element) */
@@ -43,11 +39,12 @@
             position: absolute; 
             max-width: 30%; 
             max-height: 50vh;
-             /*border: 5px solid white;*/
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            /* REMOVED: border: 5px solid white; */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             z-index: 10; 
             opacity: 0; 
-            transition: opacity 0.1s ease-in-out, transform 0.5s;
+            /* Instant appearance; only smooth the transform (rotation/scale) */
+            transition: transform 0.5s; 
             user-select: none; 
             pointer-events: none; 
         }
@@ -64,38 +61,35 @@
     <div id="slideshow-container"></div> 
 
     <script>
-        // --- STREAM VARIABLES ---
+        // --- GLOBAL STATE VARIABLES ---
         let mouseX = 0;
         let mouseY = 0;
         let tearInterval = null;
         let startTime = 0; 
         let duration = 0; 
-        let touchStarted = false; // Flag to prevent desktop mouse events from double-firing
+        let touchStarted = false; 
         
         // --- MULTIPLE TEAR SETS ---
         const tearImagesSetA = ['tear1.png', 'tear2.png', 'tear3.png']; 
-        const tearImagesSetB = ['tear6.png', 'tear7.png', 'tear8.png']; // New image set
-        let activeTearSet = tearImagesSetA; // Starts with Set A
-        // --------------------------
-
+        const tearImagesSetB = ['tear6.png', 'tear7.png', 'tear8.png']; 
+        let activeTearSet = tearImagesSetA; 
+        
         // --- SLIDESHOW VARIABLES ---
         const slideshowImages = [
-            'slide1.jpg', 
-            'slide2.jpg', 
-            'slide3.jpg', 
-            'slide4.jpg', 
-            'slide5.jpg',
-            'slide6.png'
+            'slide1.jpg', 'slide2.jpg', 'slide3.jpg', 
+            'slide4.jpg', 'slide5.jpg', 'slide6.png'
         ];
         let slideshowInterval = null;
-        const slideDuration = 3000;
+        const slideDuration = 1000; // 3000ms (3 seconds)
+        let lastSlideTime = 0; // NEW: Tracks time of last image creation for reliable timing
         const slideshowContainer = document.getElementById('slideshow-container');
+        let currentRAF = null; // Stores the requestAnimationFrame ID
 
         // 1. Core Logic Functions
         function getDurationBasedHue() {
             if (startTime === 0) return 0;
             duration = (Date.now() - startTime) / 1000; 
-            const hueShiftSpeed = 30; // 30 degrees per second
+            const hueShiftSpeed = 30;
             const hue = (duration * hueShiftSpeed) % 360; 
             return hue;
         }
@@ -104,10 +98,10 @@
         function toggleTearSet() {
             if (activeTearSet === tearImagesSetA) {
                 activeTearSet = tearImagesSetB;
-                console.log('Switched to Tear Set B (4-6)');
+                console.log('Switched to Tear Set B');
             } else {
                 activeTearSet = tearImagesSetA;
-                console.log('Switched to Tear Set A (1-3)');
+                console.log('Switched to Tear Set A');
             }
         }
 
@@ -123,39 +117,38 @@
             const randomXOffset = Math.random() * 10 - 5; 
             
             // EXAGGERATED DYNAMICS: Random fall distance and horizontal drift
-            const randomFallDistance = Math.random() * 160 + 40; // 40px (very slow) to 200px (fast)
-            const randomDrift = Math.random() * 100 - 50;         // -50px (strong left) to 50px (strong right)
+            const randomFallDistance = Math.random() * 160 + 40; 
+            const randomDrift = Math.random() * 100 - 50;         
 
-            const tearContainer = document.createElement('div');
-            tearContainer.className = 'tear';
+            // --- PERFORMANCE FIX: Create the Image element directly ---
             const tearImage = document.createElement('img');
+            tearImage.className = 'tear-img'; // Use the new combined class
             tearImage.src = selectedImage; 
             tearImage.alt = 'Tear';
             tearImage.style.filter = `hue-rotate(${currentHue}deg)`; 
-            tearContainer.appendChild(tearImage);
-
+            
             const initialX = mouseX + randomXOffset; 
             const initialY = mouseY + 15; 
 
-            tearContainer.style.left = `${initialX}px`;
-            tearContainer.style.top = `${initialY}px`;
-            tearContainer.style.width = `${randomSize}px`; 
+            tearImage.style.left = `${initialX}px`;
+            tearImage.style.top = `${initialY}px`;
+            tearImage.style.width = `${randomSize}px`; 
             
-            document.body.appendChild(tearContainer);
+            document.body.appendChild(tearImage);
 
             // Animate (Fall, Fade, Shrink, and DRIFT)
             setTimeout(() => {
-                tearContainer.style.opacity = '0';
-                tearContainer.style.top = `${initialY + randomFallDistance}px`;
-                tearContainer.style.left = `${initialX + randomDrift}px`;
+                tearImage.style.opacity = '0';
+                tearImage.style.top = `${initialY + randomFallDistance}px`;
+                tearImage.style.left = `${initialX + randomDrift}px`;
                 
                 tearImage.style.transform = 'scale(0.1)'; 
             }, 10); 
 
             // LONGER DURATION: Element removed after 5000ms (5.0 seconds)
             setTimeout(() => {
-                tearContainer.remove();
-            }, 50000); 
+                tearImage.remove();
+            }, 5000); 
         }
         
         // 2. Slideshow Logic (Collage)
@@ -183,27 +176,44 @@
             
             slideshowContainer.appendChild(img);
             
-            // Fade in the image (It will NOT fade out later)
-            setTimeout(() => {
-                img.style.opacity = '1';
-            }, 10);
+            // FIX: Image appears instantly
+            img.style.opacity = '1';
+        }
+        
+        // NEW: Continuous check function for reliable timing
+        function checkCollageTime() {
+            // Check if slideshow is active AND if the required duration has passed since the last image
+            if (lastSlideTime > 0 && (Date.now() - lastSlideTime >= slideDuration)) {
+                createCollageImage();
+                lastSlideTime = Date.now(); // Reset the timer
+            }
+            // If the slideshow is active, keep checking in the next frame
+            if (lastSlideTime > 0) {
+                currentRAF = requestAnimationFrame(checkCollageTime);
+            }
         }
         
         function startSlideshow() {
-            createCollageImage(); 
-            slideshowInterval = setInterval(createCollageImage, slideDuration);
+            if (lastSlideTime === 0) {
+                lastSlideTime = Date.now(); // Start the timer
+                createCollageImage(); // Create the first image immediately
+                currentRAF = requestAnimationFrame(checkCollageTime); // Start the animation loop
+            }
         }
 
         function stopSlideshow() {
-            if (slideshowInterval !== null) {
-                clearInterval(slideshowInterval);
-                slideshowInterval = null;
-                // Clear all images when stopping the collage
-                document.querySelectorAll('.collage-image').forEach(img => {
-                    img.style.opacity = '0';
-                    setTimeout(() => img.remove(), 1000);
-                });
+            // Stop the continuous check
+            if (currentRAF !== null) {
+                cancelAnimationFrame(currentRAF);
+                currentRAF = null;
             }
+            lastSlideTime = 0; 
+            
+            // Clear all images when stopping the collage
+            document.querySelectorAll('.collage-image').forEach(img => {
+                img.style.opacity = '0';
+                setTimeout(() => img.remove(), 1000);
+            });
         }
 
         // 3. EVENT HANDLERS FOR CRYING (Touch and Mouse Down/Move)
@@ -282,7 +292,7 @@
         document.addEventListener('keydown', function(event) {
             // 'S' key toggles the slideshow
             if (event.key === 's') {
-                if (slideshowInterval === null) {
+                if (lastSlideTime === 0) {
                     startSlideshow();
                 } else {
                     stopSlideshow();
@@ -316,9 +326,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
