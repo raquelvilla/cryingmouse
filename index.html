@@ -20,6 +20,25 @@
             -moz-user-select: none;
         }
         
+        /* INSTRUCTIONS OVERLAY */
+        #instruction-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000; /* Highest layer */
+            transition: opacity 0.5s;
+        }
+        #instruction-overlay img {
+            max-width: 90%;
+            max-height: 90vh;
+        }
+        
         /* NEW COMBINED TEAR IMAGE CLASS: Removed the outer .tear div for performance */
         .tear-img { 
             position: absolute;
@@ -39,7 +58,6 @@
             position: absolute; 
             max-width: 30%; 
             max-height: 50vh;
-            /* REMOVED: border: 5px solid white; */
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             z-index: 10; 
             opacity: 0; 
@@ -59,9 +77,13 @@
 <body>
     
     <div id="slideshow-container"></div> 
+    
+    <div id="instruction-overlay">
+        <img src="instruction.png" alt="Instructions">
+    </div>
 
     <script>
-        // --- GLOBAL STATE VARIABLES ---
+        // --- STREAM VARIABLES ---
         let mouseX = 0;
         let mouseY = 0;
         let tearInterval = null;
@@ -69,6 +91,9 @@
         let duration = 0; 
         let touchStarted = false; 
         
+        // --- GLOBAL ELEMENTS ---
+        const instructionOverlay = document.getElementById('instruction-overlay');
+
         // --- MULTIPLE TEAR SETS ---
         const tearImagesSetA = ['tear1.png', 'tear2.png', 'tear3.png']; 
         const tearImagesSetB = ['tear6.png', 'tear7.png', 'tear8.png']; 
@@ -80,10 +105,20 @@
             'slide4.jpg', 'slide5.jpg', 'slide6.png'
         ];
         let slideshowInterval = null;
-        const slideDuration = 1000; // 3000ms (3 seconds)
-        let lastSlideTime = 0; // NEW: Tracks time of last image creation for reliable timing
+        const slideDuration = 3000;
+        let lastSlideTime = 0; 
         const slideshowContainer = document.getElementById('slideshow-container');
-        let currentRAF = null; // Stores the requestAnimationFrame ID
+        let currentRAF = null; 
+
+        // Function to hide the instructions
+        function hideInstructions() {
+            if (instructionOverlay.style.display !== 'none') {
+                instructionOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    instructionOverlay.style.display = 'none';
+                }, 500); // Wait for fade-out transition (0.5s)
+            }
+        }
 
         // 1. Core Logic Functions
         function getDurationBasedHue() {
@@ -96,6 +131,7 @@
 
         // Function to toggle the active tear set
         function toggleTearSet() {
+            hideInstructions();
             if (activeTearSet === tearImagesSetA) {
                 activeTearSet = tearImagesSetB;
                 console.log('Switched to Tear Set B');
@@ -176,24 +212,24 @@
             
             slideshowContainer.appendChild(img);
             
-            // FIX: Image appears instantly
+            // Image appears instantly
             img.style.opacity = '1';
         }
         
-        // NEW: Continuous check function for reliable timing
+        // Continuous check function for reliable timing
         function checkCollageTime() {
-            // Check if slideshow is active AND if the required duration has passed since the last image
             if (lastSlideTime > 0 && (Date.now() - lastSlideTime >= slideDuration)) {
                 createCollageImage();
                 lastSlideTime = Date.now(); // Reset the timer
             }
-            // If the slideshow is active, keep checking in the next frame
+            // Keep checking only if the slideshow is active
             if (lastSlideTime > 0) {
                 currentRAF = requestAnimationFrame(checkCollageTime);
             }
         }
         
         function startSlideshow() {
+            hideInstructions(); // Hide instructions when slideshow starts
             if (lastSlideTime === 0) {
                 lastSlideTime = Date.now(); // Start the timer
                 createCollageImage(); // Create the first image immediately
@@ -219,6 +255,8 @@
         // 3. EVENT HANDLERS FOR CRYING (Touch and Mouse Down/Move)
         
         function startCrying(event) {
+            hideInstructions(); // Hide instructions when crying starts
+            
             // Mobile touch start logic
             if (event.touches) {
                 touchStarted = true; 
@@ -236,7 +274,6 @@
 
             if (tearInterval === null) {
                 startTime = Date.now(); 
-                // Set emission rate to 3ms for a very dense stream
                 tearInterval = setInterval(dropTear, 3); 
                 dropTear(); 
             }
@@ -290,6 +327,7 @@
         
         // 5. KEYDOWN/KEYUP LISTENERS (Spacebar, 'S', and 'T' key)
         document.addEventListener('keydown', function(event) {
+            
             // 'S' key toggles the slideshow
             if (event.key === 's') {
                 if (lastSlideTime === 0) {
@@ -306,10 +344,7 @@
 
             // Spacebar Start (for desktop)
             else if (event.key === ' ' && tearInterval === null) {
-                startTime = Date.now(); 
-                // Set emission rate to 3ms for a very dense stream
-                tearInterval = setInterval(dropTear, 3); 
-                dropTear(); 
+                startCrying(event); // Use existing startCrying logic to hide instructions
             }
         });
 
